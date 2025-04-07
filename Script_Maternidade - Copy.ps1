@@ -1,18 +1,18 @@
-# Obter todos os usu·rios do Active Directory que est„o com o extencionAttribute2 = 'LicenÁa Maternidade'
-$usuarios = Get-ADUser -Filter { extensionAttribute2 -eq 'LicenÁa Maternidade' }
+# Obter todos os usu√°rios do Active Directory que est√£o com o extencionAttribute2 = 'Licen√ßa Maternidade'
+$usuarios = Get-ADUser -Filter { extensionAttribute2 -eq 'Licen√ßa Maternidade' }
 
 foreach ($usuario in $usuarios) {
 
-    # Verificar se esses usu·rios est„o no grupo G-DEN-GD-Maternidade
+    # Verificar se esses usu√°rios est√£o no grupo G-Maternidade
     $usuarioNoGrupoMaternidade = Get-ADUser $usuario -Properties MemberOf | Select-Object -ExpandProperty MemberOf | Where-Object {$_ -like "*G-Maternidade*"}
     
     if ($usuarioNoGrupoMaternidade) {
-        Write-Output "Usu·rio $($usuario.SamAccountName) j· est· no grupo G-Maternidade. Nenhuma aÁ„o necess·ria."
+        Write-Output "Usu√°rio $($usuario.SamAccountName) j√° est√° no grupo G-Maternidade. Nenhuma a√ß√£o necess√°ria."
     } else {
-        # Array para armazenar todas as aÁıes que ser„o agendadas para este usu·rio
+        # Array para armazenar todas as a√ß√µes que ser√£o agendadas para este usu√°rio
         $actions = @()
 
-        # Remover o usu·rio de todos os grupos que comeÁam com O365Perfil*
+        # Remover o usu√°rio de todos os grupos que come√ßam com O365Perfil*
         $gruposO365 = Get-ADGroup -Filter {Name -like "O365Perfil*"}
         
         foreach ($grupo in $gruposO365) {
@@ -21,36 +21,36 @@ foreach ($usuario in $usuarios) {
 
                 Remove-ADGroupMember -Identity $grupo -Members $usuario -Confirm:$false
 
-                Write-Output "Usu·rio $($usuario.SamAccountName) removido do grupo $($grupo.Name)."
+                Write-Output "Usu√°rio $($usuario.SamAccountName) removido do grupo $($grupo.Name)."
 
-                # Preparar aÁ„o para adicionar o usu·rio de volta apÛs 150 dias
+                # Preparar a√ß√£o para adicionar o usu√°rio de volta ap√≥s 150 dias
                 $actionAdd = New-ScheduledTaskAction -Execute 'Powershell.exe' -Argument "-Command `"Add-ADGroupMember -Identity '$($grupo.Name)' -Members '$($usuario.SamAccountName)'`""
                 
-                # Adicionar a aÁ„o ao array de aÁıes
+                # Adicionar a a√ß√£o ao array de a√ß√µes
                 $actions += $actionAdd
             }
 
         }
      
-        # Adicionar o usu·rio ao grupo G-DEN-GD-Maternidade
+        # Adicionar o usu√°rio ao grupo G-Maternidade
         Add-ADGroupMember -Identity "G-Maternidade" -Members $usuario.SamAccountName
-        Write-Output "Usu·rio $($usuario.SamAccountName) adicionado ao grupo G-Maternidade."
+        Write-Output "Usu√°rio $($usuario.SamAccountName) adicionado ao grupo G-Maternidade."
 
-        # Preparar aÁ„o para remover o usu·rio apÛs 150 dias do grupo G-DEN-GD-Maternidade
+        # Preparar a√ß√£o para remover o usu√°rio ap√≥s 150 dias do grupo G-Maternidade
         $actionRemove = New-ScheduledTaskAction -Execute 'Powershell.exe' -Argument "-Command `"Remove-ADGroupMember -Identity 'G-Maternidade' -Members '$($usuario.SamAccountName)' -Confirm:`$false`""
 
-        # Adicionar a aÁ„o ao array de aÁıes
+        # Adicionar a a√ß√£o ao array de a√ß√µes
         $actions += $actionRemove
 
         # Criar o gatilho para ocorrer uma vez daqui a 150 dias
         $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddDays(150)
 
-        # Registrar a tarefa agendada com todas as aÁıes e o gatilho para este usu·rio
+        # Registrar a tarefa agendada com todas as a√ß√µes e o gatilho para este usu√°rio
         Register-ScheduledTask -TaskName "Remover Maternidade de $($usuario.SamAccountName)" `
             -Action $actions `
             -Trigger $trigger `
             -TaskPath "\Usuarios_Maternidade"
 
-        Write-Output "Tarefa agendada para remover e adicionar o usu·rio $($usuario.SamAccountName) apÛs 150 dias na pasta '\Usuarios_Maternidade'."
+        Write-Output "Tarefa agendada para remover e adicionar o usu√°rio $($usuario.SamAccountName) ap√≥s 150 dias na pasta '\Usuarios_Maternidade'."
     }
 }
